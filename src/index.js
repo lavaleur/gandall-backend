@@ -11,6 +11,7 @@ const messageRoutes = require('./routes/messages');
 const hifzRoutes = require('./routes/hifz');
 const paymentRoutes = require('./routes/payments');
 const parentalRoutes = require('./routes/parental');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -58,6 +59,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/hifz', hifzRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/parental', parentalRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 handler
 app.use((req, res) => {
