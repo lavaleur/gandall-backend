@@ -4,7 +4,7 @@
   "description": "Gandall Tutoring Platform API",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+   "start": "node src/index.js",
     "dev": "nodemon src/index.js"
   },
   "dependencies": {
