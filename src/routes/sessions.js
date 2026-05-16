@@ -84,6 +84,22 @@ router.put('/:id/status', auth, async (req, res) => {
     const isParticipant = session.student_id === req.user.id || session.tutor_id === req.user.id;
     if (!isParticipant) return res.status(403).json({ error: 'Not your session' });
 
+    const isTutor = session.tutor_id === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    if (status === 'confirmed') {
+      if (!isTutor && !isAdmin) {
+        return res.status(403).json({ error: 'Only the tutor can accept this booking' });
+      }
+      if (session.status !== 'pending') {
+        return res.status(400).json({ error: 'Only pending sessions can be accepted' });
+      }
+    }
+
+    if (status === 'completed' && !isTutor && !isAdmin) {
+      return res.status(403).json({ error: 'Only the tutor can mark a session complete' });
+    }
+
     const { data, error } = await supabase
       .from('sessions')
       .update({ status })
