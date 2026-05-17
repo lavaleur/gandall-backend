@@ -4,11 +4,10 @@ const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// GET /api/sessions — get my sessions
+// GET /api/sessions — sessions where user is student or tutor (role-independent)
 router.get('/', auth, async (req, res) => {
   try {
-    const isStudent = req.user.role === 'student';
-    const field = isStudent ? 'student_id' : 'tutor_id';
+    const userId = req.user.id;
 
     const { data, error } = await supabase
       .from('sessions')
@@ -17,7 +16,7 @@ router.get('/', auth, async (req, res) => {
         student:users!student_id(id, full_name, avatar_url),
         tutor:users!tutor_id(id, full_name, avatar_url)
       `)
-      .eq(field, req.user.id)
+      .or(`student_id.eq.${userId},tutor_id.eq.${userId}`)
       .order('scheduled_at', { ascending: true });
 
     if (error) throw error;

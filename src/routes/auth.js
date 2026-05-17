@@ -1,11 +1,93 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
 const supabase = require('../config/supabase');
 const { auth } = require('../middleware/auth');
 
 const router = express.Router();
+
+/**
+ * POST /api/auth/sync-supabase-profile
+ * Verifies Supabase access_token (HS256), then upserts public.users + profile using service role.
+ * Use when RLS/client insert is not available or trigger missed — no public.users row yet.
+ */
+router.post('/sync-supabase-profile', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  if (!process.env.SUPABASE_JWT_SECRET) {
+    return res.status(503).json({ error: 'Supabase auth is not configured on this server' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  let payload;
+  try {
+    payload = jwt.verify(token, process.env.SUPABASE_JWT_SECRET, { algorithms: ['HS256'] });
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  const id = payload.sub;
+  if (!id) return res.status(401).json({ error: 'Invalid token payload' });
+
+  const meta = payload.user_metadata || {};
+  const email = String(payload.email || meta.email || '').trim();
+  let role = meta.role || 'student';
+  if (!['student', 'tutor', 'parent'].includes(role)) role = 'student';
+
+  const fullName =
+    (meta.full_name && String(meta.full_name).trim()) ||
+    (meta.name && String(meta.name).trim()) ||
+    (email ? email.split('@')[0] : 'Learner');
+
+  const row = {
+    id,
+    email: email || '',
+    full_name: fullName,
+    role,
+    phone: meta.phone ? String(meta.phone).trim() || null : null,
+    location: (meta.location && String(meta.location).trim()) || 'Southampton',
+    password_hash: null,
+  };
+  const pic = meta.avatar_url || meta.picture;
+  if (pic) row.avatar_url = String(pic).trim() || null;
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .upsert(row, { onConflict: 'id' })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('sync-supabase-profile users upsert:', error);
+    if (error.code === '23505' || /duplicate|unique/i.test(String(error.message || ''))) {
+      return res.status(409).json({
+        error:
+          'This email may already be linked to a different account. Try another email or contact support.',
+      });
+    }
+    return res.status(500).json({ error: error.message || 'Could not save user profile' });
+  }
+
+  try {
+    if (role === 'tutor') {
+      await supabase.from('tutor_profiles').upsert({ user_id: id }, { onConflict: 'user_id' });
+    } else if (role === 'student') {
+      await supabase.from('student_profiles').upsert({ user_id: id }, { onConflict: 'user_id' });
+    }
+  } catch (e) {
+    console.error('sync-supabase-profile profile table:', e);
+  }
+
+  const { data: fresh, error: fe } = await supabase.from('users').select('*').eq('id', id).single();
+  if (fe || !fresh) {
+    return res.status(500).json({ error: 'Profile was saved but could not be reloaded' });
+  }
+
+  const { password_hash: _, ...safeUser } = fresh;
+  res.json({ user: safeUser });
+});
 
 const signToken = (user) =>
   jwt.sign(
@@ -68,6 +150,12 @@ router.post('/login', async (req, res) => {
     if (error || !user) return res.status(401).json({ error: 'Invalid credentials' });
     if (!user.is_active) return res.status(403).json({ error: 'Account deactivated' });
 
+    if (!user.password_hash) {
+      return res.status(401).json({
+        error: 'This email uses Supabase sign-in. Sign in via the app with your Supabase password or Google.',
+      });
+    }
+
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
@@ -90,6 +178,38 @@ router.get('/me', auth, async (req, res) => {
     res.json({ user: safeUser });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// POST /api/auth/become-tutor — OAuth users default to student; promote to tutor + ensure profile row
+router.post('/become-tutor', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { error: updErr } = await supabase
+      .from('users')
+      .update({ role: 'tutor', updated_at: new Date().toISOString() })
+      .eq('id', userId);
+    if (updErr) throw updErr;
+
+    const { data: existing } = await supabase
+      .from('tutor_profiles')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!existing) {
+      const { error: insErr } = await supabase.from('tutor_profiles').insert({ user_id: userId });
+      if (insErr) throw insErr;
+    }
+
+    const { data: user, error } = await supabase.from('users').select('*').eq('id', userId).single();
+    if (error || !user) return res.status(404).json({ error: 'User not found' });
+    const { password_hash: _, ...safeUser } = user;
+    res.json({ user: safeUser });
+  } catch (err) {
+    console.error('Become tutor error:', err);
+    res.status(500).json({ error: 'Could not upgrade account to tutor' });
   }
 });
 
