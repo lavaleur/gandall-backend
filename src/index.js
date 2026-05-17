@@ -61,6 +61,9 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/parental', parentalRoutes);
 app.use('/api/ai', aiRoutes);
 
+const usersRoutes = require('./routes/users');
+app.use('/api/users', usersRoutes);
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: `Route ${req.method} ${req.path} not found` });
