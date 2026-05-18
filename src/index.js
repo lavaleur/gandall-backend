@@ -18,14 +18,15 @@ const PORT = process.env.PORT || 4000;
 
 // ── MIDDLEWARE ────────────────────────────────────────────────────
 app.use(helmet());
-app.use(cors({ origin: ["http://localhost:3000","http://localhost:3001","https://gandall.netlify.app"], credentials: true,
+app.use(cors({
   origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:8081', // Expo dev
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://gandall.netlify.app',
     /\.netlify\.app$/,
     /\.railway\.app$/,
   ],
-  credentials: true
+  credentials: true,
 }));
 // Stripe webhook must receive the raw body (before JSON parser)
 const { stripeWebhookHandler } = require('./routes/stripe');
