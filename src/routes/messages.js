@@ -3,6 +3,7 @@ const supabase = require('../config/supabase');
 const { auth } = require('../middleware/auth');
 
 const router = express.Router();
+const { filterMessage } = require('../lib/safeguardingFilter');
 
 // GET /api/messages/conversations — get all my conversations
 router.get('/conversations', auth, async (req, res) => {
@@ -97,6 +98,15 @@ router.post('/', auth, async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    // ── SAFEGUARDING FILTER ──
+    const filterResult = await filterMessage(sanitized, req.user.id, receiver_id, session_id);
+    if (!filterResult.allowed) {
+      return res.status(400).json({ error: filterResult.reason || 'Message not allowed.', blocked: true });
+    }
+    if (filterResult.flagged) {
+      console.warn('Message flagged:', filterResult.reason);
+    }
 
     // Notify receiver
     await supabase.from('notifications').insert({
