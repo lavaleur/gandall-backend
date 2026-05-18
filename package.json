@@ -4,7 +4,7 @@
   "description": "Gandall Tutoring Platform API",
   "main": "server.js",
   "scripts": {
-   "start": "node src/index.js",
+    "start": "node src/index.js",
     "dev": "nodemon src/index.js"
   },
   "dependencies": {
@@ -17,7 +17,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
-    "stripe": "^14.10.0",
+    "stripe": "^14.25.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

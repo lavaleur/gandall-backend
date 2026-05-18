@@ -27,6 +27,14 @@ app.use(cors({
   ],
   credentials: true
 }));
+// Stripe webhook must receive the raw body (before JSON parser)
+const { stripeWebhookHandler } = require('./routes/stripe');
+app.post(
+  '/api/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+  stripeWebhookHandler
+);
+
 app.use(express.json({ limit: '10mb' }));
 
 // Rate limiting
