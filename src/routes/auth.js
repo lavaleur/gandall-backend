@@ -99,7 +99,7 @@ const signToken = (user) =>
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, full_name, role = 'student', phone, location } = req.body;
+    const { email, password, full_name, role = 'student', phone, location, subjects, hourly_rate, bio, is_dbs_checked, is_online } = req.body;
     if (!email || !password || !full_name) {
       return res.status(400).json({ error: 'Email, password and full name are required' });
     }
@@ -124,7 +124,7 @@ router.post('/register', async (req, res) => {
 
     // Create role-specific profile
     if (role === 'tutor') {
-      await supabase.from('tutor_profiles').insert({ user_id: user.id });
+      await supabase.from('tutor_profiles').insert({ user_id: user.id, subjects: subjects || [], hourly_rate: parseFloat(hourly_rate) || 20, bio: bio || '', is_dbs_checked: is_dbs_checked || false, is_online: is_online !== undefined ? is_online : true });
     } else if (role === 'student') {
       await supabase.from('student_profiles').insert({ user_id: user.id });
     }
