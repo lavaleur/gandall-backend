@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 4000;
 
 // ── MIDDLEWARE ────────────────────────────────────────────────────
 app.use(helmet());
-app.use(cors({
+app.use(cors({ origin: ["http://localhost:3000","http://localhost:3001","https://gandall.netlify.app"], credentials: true,
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:3000',
     'http://localhost:8081', // Expo dev
