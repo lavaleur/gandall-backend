@@ -67,6 +67,9 @@ app.use('/api/users', usersRoutes);
 const notificationsRoutes = require('./routes/notifications');
 app.use('/api/notifications', notificationsRoutes);
 
+const stripeRoutes = require('./routes/stripe');
+app.use('/api/stripe', stripeRoutes);
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: `Route ${req.method} ${req.path} not found` });
