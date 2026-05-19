@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const supabase = require('../lib/supabase');
+const supabase = require('../../lib/supabase');
 const { filterMessage } = require('../lib/safeguardingFilter');
 
 // GET /api/messages/conversations
