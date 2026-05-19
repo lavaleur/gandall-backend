@@ -78,6 +78,8 @@ app.use('/api/notifications', notificationsRoutes);
 
 const stripeRoutes = require('./routes/stripe');
 app.use('/api/stripe', stripeRoutes);
+const roomRoutes = require('./routes/rooms');
+app.use('/api/rooms', roomRoutes);
 
 // 404 handler
 app.use((req, res) => {
