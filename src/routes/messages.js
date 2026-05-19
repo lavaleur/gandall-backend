@@ -10,6 +10,12 @@ router.get('/conversations', auth, async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // ── SAFEGUARDING FILTER ──
+    const filterResult = await filterMessage(sanitized, req.user.id, receiver_id, session_id);
+    if (!filterResult.allowed) {
+      return res.status(400).json({ error: filterResult.reason || 'Message not allowed.', blocked: true });
+    }
+
     const { data, error } = await supabase
       .from('messages')
       .select(`
@@ -51,6 +57,12 @@ router.get('/:userId', auth, async (req, res) => {
     const me = req.user.id;
     const other = req.params.userId;
 
+    // ── SAFEGUARDING FILTER ──
+    const filterResult = await filterMessage(sanitized, req.user.id, receiver_id, session_id);
+    if (!filterResult.allowed) {
+      return res.status(400).json({ error: filterResult.reason || 'Message not allowed.', blocked: true });
+    }
+
     const { data, error } = await supabase
       .from('messages')
       .select(`*, sender:users!sender_id(id, full_name, avatar_url)`)
@@ -85,6 +97,12 @@ router.post('/', auth, async (req, res) => {
     const sanitized = content
       .replace(/(\+?\d[\d\s\-().]{7,}\d)/g, '[contact hidden]')
       .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[email hidden]');
+
+    // ── SAFEGUARDING FILTER ──
+    const filterResult = await filterMessage(sanitized, req.user.id, receiver_id, session_id);
+    if (!filterResult.allowed) {
+      return res.status(400).json({ error: filterResult.reason || 'Message not allowed.', blocked: true });
+    }
 
     const { data, error } = await supabase
       .from('messages')
